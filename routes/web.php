@@ -12,14 +12,26 @@ Route::get('/', function () {
 //admin routes
 Route::middleware(['auth', 'role:admin'])->group(function () {
 
-    //admin dashboard
+    //admin navigation
+    Route::get('/admin/home', function () {
+        return view('admin.home');
+    })->name('admin.home');
     Route::get('/admin/dashboard', function () {
         return view('admin.dashboard');
     })->name('admin.dashboard');
+    Route::get('/admin/organization', function () {
+        return view('admin.organization');
+    })->name('admin.organization');
+    Route::get('/admin/jobs', function () {
+        return view('admin.jobs');
+    })->name('admin.jobs');
+    Route::get('/admin/applicants', function () {
+        return view('admin.applicants');
+    })->name('admin.applicants');
 
     //admin profile edit
     Route::get('/profile/admin', [ProfileAdmin::class, 'edit'])->name('admin.profile.edit');
-    Route::patch('/profile/update', [ProfileController::class, 'update'])->name('admin.profile.update');
+    Route::patch('/profile/update', [ProfileAdmin::class, 'update'])->name('admin.profile.update');
 
 
 });
