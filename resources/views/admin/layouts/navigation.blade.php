@@ -1,7 +1,7 @@
-<nav id="sidebar">
+<nav id="sidebar" class="gradient-background">
     <ul>
         <li>
-            <span class="logo">ATS</span>
+            <span class="logo text-xl">AMS</span>
             <button onclick=toggleSidebar() id="toggle-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
                     fill="#e3e3e3">
