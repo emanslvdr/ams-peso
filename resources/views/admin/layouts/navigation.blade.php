@@ -1,4 +1,4 @@
-<nav id="sidebar" class="gradient-background">
+<nav id="sidebar">
     <ul>
         <li>
             <span class="logo text-xl">AMS</span>

@@ -164,7 +164,7 @@ header .navbar {
 .navbar .nav-logo .logo-text {
     color: var(--dark-color);
     font-size: var(--font-size-xl);
-    font-weight: var(--font-weight-semibold);
+    font-weight: var(--font-weight-bold);
 }
 
 .navbar .nav-logo .logo-text:hover {
@@ -256,10 +256,10 @@ header .navbar {
 
 .hero-section .hero-details .button {
     position: relative;
-    color: var(--dark-color);
     padding: 10px 26px;
-    border: 1px solid var(--dark-color);
-    background: transparent;
+    color: var(--white-color);
+    background-color: var(--secondary-color);
+    border: 1px solid var(--secondary-color);
     font-size: var(--font-size-m);
     cursor: pointer;
     border-radius: var(--border-radius-m);
@@ -270,9 +270,9 @@ header .navbar {
 }
 
 .hero-section .hero-details .button:hover {
-    color: var(--white-color);
-    background-color: var(--secondary-color);
-    border: 1px solid var(--secondary-color);
+    color: var(--dark-color);
+    border: 1px solid var(--medium-gray-color);
+    background: transparent;
 }
 
 
@@ -386,20 +386,20 @@ header .navbar {
 
 .contact-section .contact-form .submit-button {
     padding: 10px 26px;
-    color: var(--dark-color);
     margin-top: 10px;
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-medium);
-    background: transparent;
+    color: var(--white-color);
+    border: 1px solid var(--secondary-color);
+    background: var(--secondary-color);
     border-radius: var(--border-radius-m);
-    border: 1px solid var(--dark-color);
     transition: 0.3s ease;
 }
 
 .contact-section .contact-form .submit-button:hover {
-    color: var(--white-color);
-    border: 1px solid var(--secondary-color);
-    background: var(--secondary-color);
+    color: var(--dark-color);
+    background: transparent;
+    border: 1px solid var(--medium-gray-color);
 }
 
 /* footer */

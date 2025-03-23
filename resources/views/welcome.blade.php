@@ -27,12 +27,6 @@
                     <li class="nav-item">
                         <a href="#contact" class="nav-link">Contact</a>
                     </li>
-                    {{-- <li class="nav-item">
-                        <a href="#" class="nav-link">Login</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="#" class="nav-link">Register</a>
-                    </li> --}}
                     @if (Route::has('login'))
         @auth
             <li class="nav-item">
@@ -44,6 +38,9 @@
             </li>
 
             @if (Route::has('register'))
+                {{-- <li class="nav-item">
+                    <a href="{{ route('register') }}" class="nav-link">Register</a>
+                </li> --}}
                 <li class="nav-item">
                     <a href="{{ route('register') }}" class="nav-link">Register</a>
                 </li>
