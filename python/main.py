@@ -1,6 +1,6 @@
 import uuid
 import csv
-from extractor import extract_from_directory, extract_text_from_pdf, extract_text_from_docx, extract_file
+from extractor import extract_from_directory, extract_text_from_pdf, extract_text_from_docx
 from deepseek import deepseek_extract, CSV_FIELDS
 
 OUTPUT_CSV = "resume_data.csv"
@@ -18,16 +18,16 @@ def process_pdf_or_docx(file_path):
         return data
     return None
 
-def process_csv(file_path):
-    rows = extract_file(file_path)
-    processed_rows = []
-    for row in rows:
-        resume_id = str(uuid.uuid4())
-        combined_row = ", ".join([f"{k}: {v}" for k, v in row.items()])
-        extracted = deepseek_extract(combined_row)
-        extracted["Resume_ID"] = resume_id
-        processed_rows.append(extracted)
-    return processed_rows
+#def process_csv(file_path):
+ #   rows = extract_file(file_path)
+   # processed_rows = []
+  #  for row in rows:
+   #     resume_id = str(uuid.uuid4())
+   #     combined_row = ", ".join([f"{k}: {v}" for k, v in row.items()])
+  #      extracted = deepseek_extract(combined_row)
+   #     extracted["Resume_ID"] = resume_id
+  #      processed_rows.append(extracted)
+  #  return processed_rows
 
 def batch_process():
     all_data = []
@@ -37,9 +37,9 @@ def batch_process():
             data = process_pdf_or_docx(file_path)
             if data:
                 all_data.append(data)
-        elif file_path.endswith('.csv'):
-            data_rows = process_csv(file_path)
-            all_data.extend(data_rows)
+       # elif file_path.endswith('.csv'):
+       #     data_rows = process_csv(file_path)
+       #     all_data.extend(data_rows)
 
     # Export the data to CSV if any data exists
     if all_data:
