@@ -5,15 +5,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ config('app.name', 'PESO') }}</title>
-    <link rel="stylesheet" href="{{ asset('admin/style/style.css') }}">
+    <link rel="stylesheet" href="{{ asset('client/style/style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-    <script type="text/javascript" src="{{ asset('admin/js/app.js') }}" defer></script>
+    <script type="text/javascript" src="{{ asset('client/js/app.js') }}" defer></script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
 <body>
 
-    @include('admin.layouts.navigation')
+    @include('client.layouts.navigation')
 
     <main>
 
