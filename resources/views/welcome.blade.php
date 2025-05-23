@@ -56,7 +56,7 @@
             <section class="hero-section gradient-background" id="hero">
                 <div class="section-content">
                     <div class="hero-details">
-                        <h2 class="title"><span>A</span>pplicant <span>M</span>anagement <span>S</span>ystem</h2>
+                        <h2 class="title"><span>A</span>pplication <span>M</span>anagement <span>S</span>ystem</h2>
                         <h3 class="subtitle">Smart Hiring, Faster Matches!
                         </h3>
                         <p class="description">Revolutionizing the way PESO connects job seekers and

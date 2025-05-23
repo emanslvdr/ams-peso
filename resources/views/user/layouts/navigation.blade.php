@@ -6,7 +6,7 @@
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('dashboard') }}">
-                        AMS
+                        AMS Users page
                     </a>
                 </div>
 
@@ -20,7 +20,7 @@
                 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    <x-nav-link :href="route('application')" :active="request()->routeIs('application')">
+                    <x-nav-link :href="route('user.application.index')" :active="request()->routeIs('user.application.index')">
                         {{ __('Application') }}
                     </x-nav-link>
                 </div>
