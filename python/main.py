@@ -1,53 +1,106 @@
-import uuid
-import csv
-from extractor import extract_from_directory, extract_text_from_pdf, extract_text_from_docx
-from deepseek import deepseek_extract, CSV_FIELDS
+import os
+import re
+import psycopg2
+import fitz  # PyMuPDF
+import docx
+from uuid import uuid4
+from sklearn.metrics import jaccard_score
+from sklearn.preprocessing import MultiLabelBinarizer
 
-OUTPUT_CSV = "resume_data.csv"
+# Database connection settings (replace with your Azure PostgreSQL settings)
+DB_SETTINGS = {
+    'host': 'your-db-hostname',
+    'dbname': 'your-db-name',
+    'user': 'your-db-user',
+    'password': 'your-db-password',
+    'port': 5432,
+}
 
-def process_pdf_or_docx(file_path):
-    if file_path.endswith(".pdf"):
+def extract_text_from_pdf(path):
+    """Extract full text from PDF file using PyMuPDF."""
+    doc = fitz.open(path)
+    text = " ".join([page.get_text() for page in doc])
+    doc.close()
+    return text
+
+def extract_text_from_docx(path):
+    """Extract full text from DOCX file."""
+    doc = docx.Document(path)
+    return " ".join([para.text for para in doc.paragraphs])
+
+def extract_skills(text):
+    """Extract skills using simple keyword-based matching (can be upgraded later)."""
+    predefined_skills = ['python', 'java', 'sql', 'html', 'css', 'javascript', 'react', 'nodejs', 'laravel']
+    found_skills = []
+    for skill in predefined_skills:
+        if re.search(r'\b' + re.escape(skill) + r'\b', text, re.IGNORECASE):
+            found_skills.append(skill.lower())
+    return list(set(found_skills))
+
+def connect_db():
+    """Connect to PostgreSQL."""
+    return psycopg2.connect(**DB_SETTINGS)
+
+def fetch_job_listings(cursor):
+    """Fetch job listings and required skills from the database."""
+    cursor.execute("SELECT id, requirements FROM job_listings")
+    return cursor.fetchall()
+
+def insert_match_score(cursor, resume_id, job_id, score):
+    """Insert match score into the matches table."""
+    cursor.execute(
+        "INSERT INTO matches (resume_id, job_listing_id, similarity_score) VALUES (%s, %s, %s)",
+        (resume_id, job_id, score)
+    )
+
+def jaccard_similarity(list1, list2):
+    """Compute Jaccard similarity between two skill lists."""
+    mlb = MultiLabelBinarizer()
+    binary = mlb.fit_transform([list1, list2])
+    return jaccard_score(binary[0], binary[1])
+
+def process_resume(file_path):
+    """Extract name, id, skills from resume file."""
+    ext = os.path.splitext(file_path)[-1].lower()
+    if ext == '.pdf':
         text = extract_text_from_pdf(file_path)
-    elif file_path.endswith(".docx"):
+    elif ext == '.docx':
         text = extract_text_from_docx(file_path)
-    
-    if text:
-        resume_id = str(uuid.uuid4())
-        data = deepseek_extract(text)
-        data["Resume_ID"] = resume_id
-        return data
-    return None
+    else:
+        return None
 
-#def process_csv(file_path):
- #   rows = extract_file(file_path)
-   # processed_rows = []
-  #  for row in rows:
-   #     resume_id = str(uuid.uuid4())
-   #     combined_row = ", ".join([f"{k}: {v}" for k, v in row.items()])
-  #      extracted = deepseek_extract(combined_row)
-   #     extracted["Resume_ID"] = resume_id
-  #      processed_rows.append(extracted)
-  #  return processed_rows
+    resume_id = str(uuid4())
+    name_match = re.search(r'(?i)(?:name\s*[:\-]?\s*)([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)', text)
+    name = name_match.group(1).strip() if name_match else "Unknown Name"
+    skills = extract_skills(text)
+    return resume_id, name, skills
 
-def batch_process():
-    all_data = []
-    # Loop through the directory and subdirectories to find files
-    for file_path in extract_from_directory("datasets"):
-        if file_path.endswith(('.pdf', '.docx')):
-            data = process_pdf_or_docx(file_path)
-            if data:
-                all_data.append(data)
-       # elif file_path.endswith('.csv'):
-       #     data_rows = process_csv(file_path)
-       #     all_data.extend(data_rows)
+def main(resume_file_path):
+    resume_data = process_resume(resume_file_path)
+    if not resume_data:
+        print("Unsupported file type.")
+        return
 
-    # Export the data to CSV if any data exists
-    if all_data:
-        with open(OUTPUT_CSV, mode='w', newline='', encoding='utf-8') as file:
-            writer = csv.DictWriter(file, fieldnames=CSV_FIELDS)
-            writer.writeheader()
-            writer.writerows(all_data)
-        print(f"Exported {len(all_data)} entries to {OUTPUT_CSV}")
+    resume_id, name, resume_skills = resume_data
+    print(f"Parsed: {name} [{resume_id}] with skills: {resume_skills}")
 
-if __name__ == "__main__":
-    batch_process()
+    conn = connect_db()
+    cur = conn.cursor()
+
+    # Insert the resume into the database
+    cur.execute("INSERT INTO resumes (id, name, skills) VALUES (%s, %s, %s)", (resume_id, name, ','.join(resume_skills)))
+
+    # Compare against all job listings
+    for job_id, req in fetch_job_listings(cur):
+        required_skills = extract_skills(req)
+        score = jaccard_similarity(resume_skills, required_skills)
+        insert_match_score(cur, resume_id, job_id, round(score * 100, 2))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    print("Matching complete and scores inserted.")
+
+# Example usage:
+# main("path_to_resume.pdf") or main("path_to_resume.docx")
+
