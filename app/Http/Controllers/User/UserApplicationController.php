@@ -114,6 +114,7 @@ class UserApplicationController extends Controller
             'graduation_year' => 'required|integer',
             'institution' => 'required',
             'resume' => 'nullable|mimes:pdf,doc,docx|max:2048',
+            'skills' => 'nullable|string',
         ]);
 
         $data = $request->except('resume');

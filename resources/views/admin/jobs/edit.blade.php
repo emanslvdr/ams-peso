@@ -11,10 +11,31 @@
                 <input type="text" name="title" value="{{ old('title', $job->title) }}" required class="w-full px-3 py-2 border rounded">
             </div>
 
+            <div>
+    <label class="block mb-1 font-medium">Status</label>
+    <select name="status" class="w-full border rounded p-2">
+        <option value="open" {{ $job->status === 'open' ? 'selected' : '' }}>Open</option>
+        <option value="closed" {{ $job->status === 'closed' ? 'selected' : '' }}>Closed</option>
+        <option value="draft" {{ $job->status === 'draft' ? 'selected' : '' }}>Draft</option>
+    </select>
+</div>
+
+
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700">Description</label>
                 <textarea name="description" required class="w-full px-3 py-2 border rounded">{{ old('description', $job->description) }}</textarea>
             </div>
+
+            <div class="mb-4">
+    <label class="block text-sm font-medium text-gray-700">
+        Required Skills <span class="text-xs text-gray-500">(comma-separated)</span>
+    </label>
+    <input type="text" name="skills"
+        class="w-full px-3 py-2 border rounded"
+        placeholder="e.g. PHP, Communication, Leadership"
+        value="{{ old('skills', $job->skills) }}">
+</div>
+
 
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700">Organization</label>

@@ -75,6 +75,48 @@
                         <x-input-label for="institution" :value="__('Institution Name')" />
                         <x-text-input id="institution" class="w-full border p-2 rounded" type="text" name="institution" required />
                     </div>
+
+<div>
+    <x-input-label for="skills" :value="__('Skills')" />
+    <div
+        x-data="{
+            skills: @json(old('skills') ? explode(',', old('skills')) : []),
+            skillInput: '',
+            addSkill() {
+                let s = this.skillInput.trim();
+                if (s && !this.skills.includes(s)) {
+                    this.skills.push(s);
+                }
+                this.skillInput = '';
+            },
+            removeSkill(idx) {
+                this.skills.splice(idx, 1);
+            }
+        }"
+        class="w-full border rounded p-2 flex flex-wrap gap-2 bg-white"
+    >
+        <template x-for="(skill, idx) in skills" :key="idx">
+            <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full flex items-center text-xs">
+                <span x-text="skill"></span>
+                <button type="button" class="ml-1" @click="removeSkill(idx)">&times;</button>
+            </span>
+        </template>
+        <input
+            x-ref="input"
+            type="text"
+            x-model="skillInput"
+            @keydown.enter.prevent="addSkill()"
+            @keydown.tab.prevent="addSkill()"
+            @keydown.,.prevent="addSkill()"
+            placeholder="Type a skill and press Enter"
+            class="flex-1 outline-none border-none p-1 text-sm focus:outline-none"
+        />
+        <input type="hidden" name="skills" :value="skills.join(',')" />
+    </div>
+    <x-input-error :messages="$errors->get('skills')" class="mt-2" />
+    <p class="text-xs text-gray-400 mt-1">Press Enter, Tab, or comma to add a skill.</p>
+</div>
+
                     
                     <h3 class="font-semibold text-lg text-gray-800">Work Experience</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -119,4 +161,25 @@
             </div>
         </div>
     </div>
+
+
+    <script>
+function skillsInput() {
+    return {
+        skills: @json(old('skills') ? explode(',', old('skills')) : []),
+        skillInput: '',
+        addSkill() {
+            let s = this.skillInput.trim();
+            if (s && !this.skills.includes(s)) {
+                this.skills.push(s);
+            }
+            this.skillInput = '';
+        },
+        removeSkill(idx) {
+            this.skills.splice(idx, 1);
+        }
+    }
+}
+</script>
+
 </x-app-layout>

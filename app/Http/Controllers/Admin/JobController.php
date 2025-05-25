@@ -27,7 +27,8 @@ class JobController extends Controller
         $request->validate([
             'title' => 'required',
             'description' => 'required',
-            'organization_id' => 'required|exists:organizations,id'
+            'organization_id' => 'required|exists:organizations,id',
+            'status' => 'required|in:open,closed,draft',
         ]);
 
         Job::create($request->all());
@@ -45,7 +46,8 @@ class JobController extends Controller
         $request->validate([
             'title' => 'required',
             'description' => 'required',
-            'organization_id' => 'required|exists:organizations,id'
+            'organization_id' => 'required|exists:organizations,id',
+            'status' => 'required|in:open,closed,draft',
         ]);
 
         $job->update($request->all());
@@ -74,21 +76,38 @@ class JobController extends Controller
     {
         $stages = ['New', 'Screening', 'Interview', 'Assessment', 'Offer', 'Hired'];
 
-        // Fetch ALL applications (not filtered by job)
-        $applications = UserApplication::with('user')->get();
-
-        // Group by stage
+        $organization = $job->organization; // Assuming the Job model has organization() relation
+        // 1. Applications for this job (kanban columns)
+        $applications = UserApplication::with('user')
+            ->where('job_id', $job->id)
+            ->get();
         $grouped = $applications->groupBy('stage');
+
+        // 2. Candidate pool: applications NOT assigned to any job
+        $unassigned = UserApplication::with('user')
+            ->whereNull('job_id')
+            ->get();
 
         return view('admin.jobs.pipeline', [
             'job' => $job,
             'stages' => $stages,
             'applications' => $grouped,
-            'unassigned' => $applications->whereNull('stage'),
+            'unassigned' => $unassigned,
+            'organization' => $organization,
         ]);
     }
 
+    // JobController.php
+    public function close(Request $request, Job $job)
+    {
+        $job->status = 'Closed'; // or lowercase 'closed', just be consistent
+        $job->save();
 
+        // Optional: You could also fire an event or log this action
+
+        // Return JSON for AJAX
+        return response()->json(['success' => true, 'status' => $job->status]);
+    }
 
 
 

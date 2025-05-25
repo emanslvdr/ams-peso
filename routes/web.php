@@ -71,14 +71,37 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::delete('/admin/jobs/{job}', [JobController::class, 'destroy'])->name('jobs.destroy');
 
     Route::get('/jobs/{job}/pipeline', [JobController::class, 'pipeline'])->name('jobs.pipeline');
+
+    Route::post('/admin/jobs/{job}/close', [App\Http\Controllers\Admin\JobController::class, 'close'])->name('admin.jobs.close');
+
+
+
     Route::post('/applications/{application}/stage', function (\App\Models\UserApplication $application, \Illuminate\Http\Request $request) {
-        $application->update([
-            'stage' => $request->input('stage'),
-        ]);
+        $data = ['stage' => $request->input('stage')];
+        if ($request->has('job_id')) {
+            $data['job_id'] = $request->input('job_id');
+        }
+        $application->update($data);
         return response()->json(['success' => true]);
     });
 
+    Route::post('/applications/bulk-assign', function (\Illuminate\Http\Request $request) {
+        \App\Models\UserApplication::whereIn('id', $request->input('ids'))
+            ->update([
+                'job_id' => $request->input('job_id'),
+                'stage' => $request->input('stage'),
+            ]);
+        return response()->json(['success' => true]);
+    });
 
+    Route::get('/applications/{application}/details', function (\App\Models\UserApplication $application) {
+        $application->load('user');
+        $data = $application->toArray();
+        $data['skills'] = $application->skills
+            ? array_map('trim', explode(',', $application->skills))
+            : [];
+        return response()->json($data);
+    });
 
     // applicants CRUD
     Route::get('/admin/applicants', [ApplicantsController::class, 'index'])->name('applicants.index');

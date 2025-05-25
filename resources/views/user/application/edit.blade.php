@@ -4,6 +4,17 @@
             {{ __('Edit Application') }}
         </h2>
     </x-slot>
+   @php
+$skillsList = collect(
+    old('skills')
+        ? explode(',', old('skills'))
+        : (isset($userApplication->skills) && $userApplication->skills !== null && $userApplication->skills !== ''
+            ? explode(',', $userApplication->skills)
+            : [])
+)->filter(function ($item) {
+    return trim($item) !== '';
+})->values()->all();
+@endphp
 
     <div class="py-6">
         <div class="max-w-7xl mx-auto px-6 lg:px-8">
@@ -66,6 +77,47 @@
                         <input type="text" name="institution" id="institution" value="{{ $userApplication->institution }}" required 
                             class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                     </div>
+
+ <div class="mt-3">
+    <x-input-label for="skills" :value="__('Skills')" />
+    <div
+        x-data="{
+            skills: @json($skillsList),
+            skillInput: '',
+            addSkill() {
+                let s = this.skillInput.trim();
+                if (s && !this.skills.includes(s)) {
+                    this.skills.push(s);
+                }
+                this.skillInput = '';
+            },
+            removeSkill(idx) {
+                this.skills.splice(idx, 1);
+            }
+        }"
+        class="w-full border rounded p-2 flex flex-wrap gap-2 bg-white"
+    >
+        <template x-for="(skill, idx) in skills" :key="idx">
+            <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full flex items-center text-xs">
+                <span x-text="skill"></span>
+                <button type="button" class="ml-1" @click="removeSkill(idx)">&times;</button>
+            </span>
+        </template>
+        <input
+            x-ref="input"
+            type="text"
+            x-model="skillInput"
+            @keydown.enter.prevent="addSkill()"
+            @keydown.tab.prevent="addSkill()"
+            @keydown.,.prevent="addSkill()"
+            placeholder="Type a skill and press Enter"
+            class="flex-1 outline-none border-none p-1 text-sm focus:outline-none"
+        />
+        <input type="hidden" name="skills" :value="skills.join(',')" />
+    </div>
+    <x-input-error :messages="$errors->get('skills')" class="mt-2" />
+    <p class="text-xs text-gray-400 mt-1">Press Enter, Tab, or comma to add a skill.</p>
+</div>
 
                     <!-- Resume Upload -->
                     <h3 class="font-semibold text-lg text-gray-800 mt-6">Upload Resume</h3>
