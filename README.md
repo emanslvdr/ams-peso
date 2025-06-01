@@ -13,6 +13,8 @@ Feel free to contribute or suggest enhancements!
 
 ## 🚀 Getting Started
 
+!!! Make Sure PostgreSQL is installed to your computer !!!
+
 Follow these steps to set up and run the application:
 
 ```bash
