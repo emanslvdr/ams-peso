@@ -46,6 +46,8 @@ php artisan serve
 ```bash
 Email: admin@example.com
 Password: password
+
+Update your email and password immediately after logging in.
 ```
 
 ## 📈 Contributions
