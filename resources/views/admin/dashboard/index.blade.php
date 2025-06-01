@@ -13,7 +13,7 @@
                 </div>
             @endif
             <span class="text-lg font-semibold text-gray-800">
-                Admin Dashboard
+                Dashboard
             </span>
         </div>
         <div class="flex items-center gap-3">
