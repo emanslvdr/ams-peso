@@ -21,12 +21,8 @@ composer install
 
 2. Install NPM dependencies and build assets
 npm install
-npm run dev
 
-3. Copy environment file
-cp .env.example .env
-
-4. Edit the .env file to use PostgreSQL:
+3. Edit the .env file to use PostgreSQL:
 Then update the following in .env:
 # DB_CONNECTION=pgsql
 # DB_HOST=127.0.0.1
@@ -35,8 +31,12 @@ Then update the following in .env:
 # DB_USERNAME=your_username
 # DB_PASSWORD=your_password
 
-5. Run migrations and seeders in the terminal
+4. Run migrations and seeders in the terminal
 php artisan migrate --seed
+
+5. run for local deployment
+npm run dev
+php artisan serve
 ```
 
 ## 📝 Default Admin Login
