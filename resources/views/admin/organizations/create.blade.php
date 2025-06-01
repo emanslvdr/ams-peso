@@ -2,7 +2,7 @@
 <div class="max-w-xl mx-auto p-6">
     <div class="flex justify-between items-center mb-4">
         <h2 class="text-2xl font-bold mb-4">Create Organization</h2>
-        <a href="{{ route('organizations.index') }}"
+        <a href="{{ url()->previous() }}"
            class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-700 text-white rounded-md">
             Back
         </a>
@@ -41,7 +41,14 @@
     <!-- Website -->
     <div>
         <label class="block mb-1 font-medium">Website</label>
-        <input type="url" name="website" class="w-full border rounded p-2" value="{{ old('website', $organization->website ?? '') }}">
+        <input 
+    type="url" 
+    name="website" 
+    id="website"
+    class="w-full border rounded p-2" 
+    value="{{ old('website', $organization->website ?? '') }}"
+    placeholder="https://example.com"
+>
         @error('website') <p class="text-red-600 text-sm">{{ $message }}</p> @enderror
     </div>
 
@@ -70,4 +77,12 @@
 </form>
 
 </div>
+<script>
+document.getElementById('website').addEventListener('blur', function() {
+    if(this.value && !/^https?:\/\//i.test(this.value)) {
+        this.value = 'https://' + this.value;
+    }
+});
+</script>
+
 </x-admin-layout>

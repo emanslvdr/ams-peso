@@ -10,11 +10,24 @@ use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
-    public function index()
+    // UserController.php
+    public function index(Request $request)
     {
-        $users = User::where('role', 'user')->get();
-        return view('admin.user.index', compact('users'));
+        $search = $request->query('search');
+        $users = User::where('role', 'user')
+            ->when($search, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+            })
+            ->orderBy('name')
+            ->paginate(10)
+            ->appends(['search' => $search]); // Keeps the search term in pagination links
+
+        return view('admin.user.index', compact('users', 'search'));
     }
+
 
     public function create()
     {
@@ -27,17 +40,25 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:6|confirmed',
+            'profile_photo' => 'nullable|image|max:2048',
         ]);
+
+        $filename = null;
+        if ($request->hasFile('profile_photo')) {
+            $filename = $request->file('profile_photo')->store('profile-photos', 'public');
+        }
 
         User::create([
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
             'password' => Hash::make($validatedData['password']),
-            'role' => 'user', // Always set to 'user'
+            'role' => 'user',
+            'profile_photo' => $filename,
         ]);
 
         return redirect()->route('users.index')->with('success', 'Account created successfully.');
     }
+
 
     public function edit(User $user)
     {
@@ -53,15 +74,25 @@ class UserController extends Controller
                 'email',
                 Rule::unique('users', 'email')->ignore($user->id),
             ],
+            'profile_photo' => 'nullable|image|max:2048',
         ]);
 
-        $user->update([
-            'name' => $validatedData['name'],
-            'email' => $validatedData['email'],
-        ]);
+        if ($request->hasFile('profile_photo')) {
+            // Optionally: Delete old photo
+            if ($user->profile_photo && \Storage::disk('public')->exists($user->profile_photo)) {
+                \Storage::disk('public')->delete($user->profile_photo);
+            }
+            $filename = $request->file('profile_photo')->store('profile-photos', 'public');
+            $user->profile_photo = $filename;
+        }
+
+        $user->name = $validatedData['name'];
+        $user->email = $validatedData['email'];
+        $user->save();
 
         return redirect()->route('users.index')->with('success', 'Account updated successfully.');
     }
+
 
     public function destroy(User $user)
     {

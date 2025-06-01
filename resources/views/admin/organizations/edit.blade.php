@@ -2,7 +2,7 @@
 <div class="max-w-xl mx-auto p-6">
     <div class="flex justify-between items-center mb-4">
         <h2 class="text-2xl font-bold mb-4">Edit Organization</h2>
-        <a href="{{ route('organizations.index') }}"
+        <a href="{{ url()->previous() }}"
            class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-700 text-white rounded-md">
             Back
         </a>

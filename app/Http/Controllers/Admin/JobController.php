@@ -63,8 +63,7 @@ class JobController extends Controller
     //additionals for organization page
     public function byOrganization(Organization $organization)
     {
-        // Load jobs for this organization
-        $jobs = $organization->jobs()->latest()->get();
+        $jobs = $organization->jobs()->withCount('applications')->latest()->get();
 
         return view('admin.organizations.view', [
             'organization' => $organization,
@@ -72,42 +71,101 @@ class JobController extends Controller
         ]);
     }
 
+
     public function pipeline(Job $job)
     {
         $stages = ['New', 'Screening', 'Interview', 'Assessment', 'Offer', 'Hired'];
+        $organization = $job->organization;
+        $jobSkills = $job->skills;
 
-        $organization = $job->organization; // Assuming the Job model has organization() relation
-        // 1. Applications for this job (kanban columns)
-        $applications = UserApplication::with('user')
+        $jobApps = UserApplication::with('user')
             ->where('job_id', $job->id)
-            ->get();
-        $grouped = $applications->groupBy('stage');
+            ->get()
+            ->map(function ($app) use ($jobSkills) {
+                $app->match_score = $this->calculateMatchScore($jobSkills, $app->skills);
+                return $app;
+            })
+            ->groupBy('stage');
 
-        // 2. Candidate pool: applications NOT assigned to any job
-        $unassigned = UserApplication::with('user')
+        $generalPool = UserApplication::with('user')
             ->whereNull('job_id')
-            ->get();
+            ->get()
+            ->map(function ($app) use ($jobSkills) {
+                $app->match_score = $this->calculateMatchScore($jobSkills, $app->skills);
+                return $app;
+            });
 
         return view('admin.jobs.pipeline', [
             'job' => $job,
             'stages' => $stages,
-            'applications' => $grouped,
-            'unassigned' => $unassigned,
             'organization' => $organization,
+            'jobApps' => $jobApps,
+            'generalPool' => $generalPool,
         ]);
     }
 
-    // JobController.php
-    public function close(Request $request, Job $job)
+
+
+    public function calculateMatchScore($jobSkills, $candidateSkills)
     {
-        $job->status = 'Closed'; // or lowercase 'closed', just be consistent
-        $job->save();
+        $jobSkillsArr = array_filter(array_map('trim', explode(',', strtolower($jobSkills))));
+        $candidateSkillsArr = array_filter(array_map('trim', explode(',', strtolower($candidateSkills))));
+        if (empty($jobSkillsArr) || empty($candidateSkillsArr))
+            return 0;
 
-        // Optional: You could also fire an event or log this action
-
-        // Return JSON for AJAX
-        return response()->json(['success' => true, 'status' => $job->status]);
+        // Fuzzy match: check if any skill partially matches
+        $matches = 0;
+        foreach ($jobSkillsArr as $jobSkill) {
+            foreach ($candidateSkillsArr as $candSkill) {
+                // If you want to allow partial matches (eg: 'php' vs 'php 8')
+                if (str_contains($candSkill, $jobSkill) || str_contains($jobSkill, $candSkill)) {
+                    $matches++;
+                    break;
+                }
+            }
+        }
+        return round(($matches / count($jobSkillsArr)) * 100);
     }
+
+
+    public function updateStatus(Request $request, Job $job)
+    {
+        $request->validate(['status' => 'required|in:open,closed,draft']);
+        $job->status = $request->status;
+        $job->save();
+        return response()->json(['success' => true]);
+    }
+
+    public function markAsHired(Request $request, $appId)
+    {
+        $application = UserApplication::findOrFail($appId);
+        $job = $application->job;
+
+        // 1. Mark as hired
+        $application->update([
+            'status' => 'hired',
+            'stage' => 'Hired',
+        ]);
+
+        // 2. Close the job
+        $job->update([
+            'status' => 'closed',
+            'hired_at' => now(),
+        ]);
+
+        // 3. Move all others to pool
+        UserApplication::where('job_id', $job->id)
+            ->where('id', '!=', $appId)
+            ->update([
+                'job_id' => null,
+                'stage' => null,
+                'status' => 'new',
+            ]);
+
+        // 4. AJAX? Send simple success.
+        return response()->json(['success' => true]);
+    }
+
 
 
 

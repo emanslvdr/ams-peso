@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\UserApplication;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
-
+use App\Models\Job;
 class UserApplicationController extends Controller
 {
     /**
@@ -15,28 +15,69 @@ class UserApplicationController extends Controller
      */
     public function index()
     {
-        $applications = UserApplication::where('user_id', Auth::id())->get();
-        return view('user.application.index', compact('applications'));
+        $generalApplication = UserApplication::where('user_id', \Auth::id())
+            ->whereNull('job_id')
+            ->first();
+
+        $jobApplications = UserApplication::with(['job.organization'])
+            ->where('user_id', \Auth::id())
+            ->whereNotNull('job_id')
+            ->latest()
+            ->get();
+
+        return view('user.application.index', compact('generalApplication', 'jobApplications'));
     }
+
+
 
     /**
      * Show the form for creating a new application.
      */
-    public function create()
+    public function create(Request $request)
     {
+        // If a general application exists, redirect to edit instead!
+        $existingGeneral = UserApplication::where('user_id', Auth::id())
+            ->whereNull('job_id')
+            ->first();
+        if ($existingGeneral) {
+            return redirect()->route('user.application.edit', $existingGeneral->id)
+                ->with('info', 'You already have a general application. You can edit it here.');
+        }
+        // You may still show job form if $request->job_id exists, but for general application, just show the empty form
         return view('user.application.create');
     }
 
-    /**
-     * Store a newly created application.
-     */
+
+
     public function store(Request $request)
     {
+        $isGeneral = !$request->filled('job_id');
 
-        $request->validate([
+        if ($isGeneral) {
+            $existingGeneral = UserApplication::where('user_id', Auth::id())
+                ->whereNull('job_id')->first();
+            if ($existingGeneral) {
+                return redirect()->route('user.application.edit', $existingGeneral->id)
+                    ->with('error', 'You already have a general application.');
+            }
+        } else {
+            $existing = UserApplication::where('user_id', Auth::id())
+                ->where('job_id', $request->job_id)
+                ->first();
+            if ($existing) {
+                return redirect()->route('user.application.index')
+                    ->with('error', 'You have already applied for this job.');
+            }
+        }
+
+        // Table name check!
+        $jobTable = 'job_listing'; // this matches your DB!
+
+
+        $validationRules = [
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:user_application,email',
+            'email' => 'required|email|max:255',
             'phone_number' => 'required|string|max:15',
             'age' => 'required|integer|min:18|max:120',
             'education_level' => 'required|string|max:255',
@@ -49,11 +90,18 @@ class UserApplicationController extends Controller
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'job_description' => 'nullable|string',
             'skills' => 'nullable|string',
-            'resume' => 'required|file|mimes:pdf,docx|max:5120', // 5MB max
-        ]);
+            'resume' => 'required|file|mimes:pdf,doc,docx|max:5120',
+        ];
 
+        if (!$isGeneral) {
+            $validationRules['job_id'] = "required|exists:{$jobTable},id";
+            $validationRules['email'] .= '|unique:user_application,email,NULL,id,job_id,' . $request->job_id;
+        } else {
+            $validationRules['email'] .= '|unique:user_application,email,NULL,id,job_id,NULL';
+        }
 
-        // Upload Resume
+        $request->validate($validationRules);
+
         $resumePath = $request->file('resume')->store('resumes', 'public');
 
         UserApplication::create([
@@ -75,12 +123,13 @@ class UserApplicationController extends Controller
             'skills' => $request->skills,
             'resume' => $resumePath,
             'status' => 'new',
+            'job_id' => $request->job_id ?? null,
+            'stage' => $request->filled('job_id') ? 'New' : null,
         ]);
-
-
 
         return redirect()->route('user.application.index')->with('success', 'Application submitted successfully.');
     }
+
 
 
     /**
@@ -144,4 +193,30 @@ class UserApplicationController extends Controller
 
         return redirect()->route('user.application.index')->with('success', 'Application deleted.');
     }
+
+
+
+    public function createForJob(\App\Models\Job $job)
+    {
+        // Prevent duplicate
+        $alreadyExists = UserApplication::where('user_id', Auth::id())
+            ->where('job_id', $job->id)
+            ->exists();
+        if ($alreadyExists) {
+            return redirect()->route('user.application.index')
+                ->with('error', 'You have already applied for this job.');
+        }
+
+        // Optional: Pre-fill from general application
+        $generalApplication = UserApplication::where('user_id', Auth::id())
+            ->whereNull('job_id')->first();
+
+        return view('user.application.job_create', [
+            'job' => $job,
+            'generalApplication' => $generalApplication
+        ]);
+
+
+    }
+
 }

@@ -1,639 +1,590 @@
 <x-admin-layout>
-    <x-slot name="header">
-    <div class="flex items-center gap-3">
-         <!-- Org Logo -->
+
+    @if($job->status === 'closed')
+    <div class="w-full text-center py-4 bg-yellow-50 text-yellow-800 rounded m-2 font-semibold">
+        This job is <span class="text-red-600">CLOSED</span>. No further changes allowed.
+    </div>
+@endif
+
+@if(session('job_closed'))
+    <div class="mt-4 p-3 rounded bg-green-50 text-green-700 font-semibold border border-green-100 text-center">
+        The job has been closed. No further changes are allowed.
+    </div>
+@endif
+
+
+<div class="max-w-6xl mx-auto px-2 pt-3">
+     
+    <div class="bg-white/95 rounded-2xl shadow-sm border border-gray-100 px-8 py-7  transition">
+    {{-- Organization Header: Logo left, org info right --}}
+    <div class="flex items-center justify-between mb-4">
         @if ($organization->logo)
             <img src="{{ asset('storage/' . $organization->logo) }}"
-                 alt="Logo"
-                 class="w-14 h-14 rounded-full object-cover border border-gray-200 bg-gray-50 flex-shrink-0" />
+                alt="Logo"
+                class="w-16 h-16 rounded-full object-cover border border-gray-200 bg-gray-50 shadow flex-shrink-0" />
         @else
-            <div class="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center font-bold text-2xl text-blue-600 uppercase border border-gray-200 flex-shrink-0">
+            <div class="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center font-bold text-2xl text-blue-600 uppercase border border-gray-200 shadow flex-shrink-0">
                 {{ strtoupper(substr($organization->name, 0, 1)) }}
             </div>
         @endif
-
-        <!-- Organization Info -->
-        <div class="flex-1 min-w-0">
-            <div class="font-bold text-lg sm:text-xl text-gray-900 truncate">{{ $organization->name }}</div>
+        <div class="text-right flex-1 ml-4">
+            <div class="font-bold text-2xl text-gray-900">{{ $organization->name }}</div>
             @if ($organization->address)
-                <div class="text-xs sm:text-sm text-gray-500 truncate">{{ $organization->address }}</div>
+                <div class="text-xs sm:text-sm text-gray-500">{{ $organization->address }}</div>
             @endif
             @if ($organization->website)
-                <a href="{{ $organization->website }}" target="_blank" class="text-xs sm:text-sm text-blue-600 hover:underline break-all mt-0.5">
+                <a href="{{ $organization->website }}" target="_blank"
+                    class="text-xs sm:text-sm text-blue-600 hover:underline break-all">
                     {{ Str::limit($organization->website, 36) }}
                 </a>
             @endif
         </div>
     </div>
-</x-slot>
 
+    <hr class="my-3 border-gray-100">
 
- <div class="p-4 max-w-5xl mx-auto space-y-6">
-    <div class="w-full bg-white rounded-xl shadow border border-gray-100 px-4 sm:px-8 py-4 mb-4 
-    flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-
-    <div class="flex-1 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-        <span class="font-bold text-lg md:text-xl tracking-tight text-gray-900">
-            {{ $job->title }}
-        </span>
-        <span class="text-base font-normal text-gray-500 sm:ml-1">– Candidate Pipeline</span>
-        @include('admin.jobs.partials.job-status-badge', ['status' => $job->status])
-    </div>
-
-    <a href="{{ route('organizations.jobs', $job->organization_id) }}"
-       class="flex items-center text-sm text-blue-600 hover:text-blue-800 hover:underline transition whitespace-nowrap ml-auto">
-        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-        </svg>
-        Back to Job Listings
-    </a>
-</div>
-
-
-        {{-- 🟦 Pipeline Columns --}}
-        @if($job->status === 'Closed')
-    <div class="flex items-center justify-center bg-gray-50 border border-gray-200 rounded-lg p-6 my-4">
-        <span class="text-gray-500 text-lg font-medium">
-            This job posting is <span class="font-bold text-gray-800">closed</span>.<br>
-            No more candidates can be moved between stages.
-        </span>
-    </div>
-@endif
-
-        <div class="overflow-x-auto pb-2">
-            <div class="flex gap-3 min-w-full" id="kanban-board">
-@php
-    $jobSkills = collect(explode(',', strtolower($job->skills ?? '')))
-        ->map(fn($skill) => trim($skill))
-        ->filter(); // removes empty strings
-@endphp
-@foreach ($stages as $stage)
-      @php $count = $applications->get($stage, collect())->count(); @endphp
-    <div class="flex-1 min-w-[220px] bg-white border rounded-lg p-3">
-        <h3 class="text-base font-medium text-gray-700 mb-2 flex items-center">
-            {{ $stage }}
-            <span
-                class="ml-2 px-2 py-0.5 rounded-full bg-gray-100 text-xs text-gray-600 font-semibold stage-count"
-                data-stage-count="{{ Str::slug($stage) }}"
-            >{{ $count }}</span>
-        </h3>
-        <div class="space-y-2 min-h-[80px] stage-column"
-             id="stage-{{ Str::slug($stage) }}"
-             data-stage="{{ $stage }}">
-            @foreach ($applications->get($stage, []) as $app)
-    @php
-        $userSkills = collect(explode(',', strtolower($app->skills ?? '')))
-            ->map(fn($skill) => trim($skill))
-            ->filter();
-
-        $matches = $jobSkills->intersect($userSkills)->count();
-        $total = $jobSkills->count();
-
-        $allSkills = collect(explode(',', $app->skills))->filter();
-        $visibleSkills = $allSkills->take(2);
-        $hasMoreSkills = $allSkills->count() > 2;
-    @endphp
-    <div class="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm flex flex-col gap-1 min-h-[112px] hover:shadow-md transition draggable cursor-pointer"
-         draggable="true"
-         data-id="{{ $app->id }}"
-         onclick="showAppDetailsModal({{ $app->id }})"
-    >
-        <div class="flex items-center gap-2 justify-between">
-            <span class="font-semibold truncate text-gray-800 text-[15px]">{{ $app->user->name }}</span>
-            @if ($total > 0)
-                @if ($matches === $total && $matches > 0)
-                    <span class="text-[11px] px-2 py-0.5 rounded bg-yellow-50 text-yellow-700 font-bold">★ Best Match</span>
-                @elseif ($matches > 0)
-                    <span class="text-[11px] px-2 py-0.5 rounded bg-green-50 text-green-700">{{ $matches }}/{{ $total }} match</span>
-                @endif
-            @endif
-        </div>
-        <div class="text-xs text-gray-500 truncate">{{ $app->user->email }}</div>
-        <div class="flex flex-wrap gap-1.5 mt-1 mb-1">
-            @foreach($visibleSkills as $skill)
-                <span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-[11px] border border-blue-100">{{ trim($skill) }}</span>
-            @endforeach
-            @if($hasMoreSkills)
-                <span class="bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full text-[11px] border border-gray-200">...</span>
-            @endif
-        </div>
-    </div>
-    @endforeach
-        </div>
-    </div>
-@endforeach
+    {{-- Job Header: Title left, controls right --}}
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-3 flex-wrap">
+                <h1 class="text-4xl font-black text-gray-900">{{ $job->title }}</h1>
+                <span class="text-gray-400 text-2xl font-medium">Pipeline</span>
+                <span class="rounded-full px-4 py-1 text-sm font-semibold border border-gray-200
+                    {{ $job->status === 'open' ? 'bg-green-100 text-green-700' : 'bg-yellow-50 text-yellow-700' }}">
+                    {{ ucfirst($job->status) }}
+                </span>
             </div>
+            <p class="text-gray-500 text-xs mt-5">
+                Drag & drop candidates between stages, or return to pool below.
+            </p>
         </div>
+        <div class="flex flex-col items-end gap-2 mb-2 md:mt-0">
+            <a href="{{ route('organizations.jobs', $organization) }}"
+                class="flex items-center text-xs text-blue-700 hover:text-blue-900 hover:underline font-semibold rounded focus:outline-none focus:ring-2 focus:ring-blue-200 px-2 py-1 transition">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                Back to Job Listings
+            </a>
+        <button id="toggle-bulk-mode"
+    class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-medium text-sm shadow transition focus:outline-none focus:ring-2 focus:ring-blue-300 border border-transparent"
+    type="button" aria-pressed="false">
+    <span id="bulk-label">Bulk Select</span>
+</button>
 
-        {{-- 🟫 Unassigned Candidate Pool --}}
-<div class="bg-white border rounded-lg p-3">
-    <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
-    <h2 class="text-base font-semibold text-gray-800">Candidate Pool</h2>
-    <input
-        type="text"
-        id="search-candidate-pool"
-        placeholder="Search by name, email, or skill..."
-        class="border px-2 py-1 rounded text-sm focus:ring focus:ring-blue-200"
-        style="min-width:180px;"
-    />
-    <select id="filter-sort-pool" class="border px-2 py-1 rounded text-sm focus:ring focus:ring-blue-200">
-        <option value="all">Show All</option>
-        <option value="best">Only Best Match</option>
-        <option value="matched">With Any Match</option>
-        <option value="sort">Sort by Best Match</option>
-    </select>
-</div>
-    <form id="bulk-assign-form">
-        <div class="flex flex-wrap gap-3" id="unassigned-pool">
-           @foreach ($unassigned as $app)
-                     @php
-        $userSkills = collect(explode(',', strtolower($app->skills ?? '')))
-            ->map(fn($skill) => trim($skill))
-            ->filter();
-        $matches = $jobSkills->intersect($userSkills)->count();
-        $total = $jobSkills->count();
-        $isBest = $matches === $total && $matches > 0;
-    @endphp
-    <div 
-    class="flex items-start bg-white p-4 rounded-2xl border border-gray-100 shadow-sm w-64 min-h-[116px] text-[15px] text-gray-800 candidate-card transition-all hover:shadow-md"
-    draggable="true"
-    data-id="{{ $app->id }}"
-    data-app-id="{{ $app->id }}"
-    data-matches="{{ $matches }}"
-    data-total="{{ $total }}"
-    data-best="{{ $isBest ? '1' : '0' }}"
->
-    <input type="checkbox" class="bulk-checkbox accent-blue-600 mt-1 mr-2" value="{{ $app->id }}">
-    <div class="flex-1 flex flex-col gap-1 min-w-0">
-        
-         <div class="flex items-center gap-2">
-            <span class="font-semibold truncate">{{ $app->user->name }}</span>
-            @if ($total > 0)
-                @if ($matches === $total && $matches > 0)
-                    <span class="text-[11px] px-2 py-0.5 rounded bg-yellow-100 text-yellow-700 font-bold whitespace-nowrap">★ Best Match</span>
-                @elseif ($matches > 0)
-                    <span class="text-[11px] px-2 py-0.5 rounded bg-green-50 text-green-700 whitespace-nowrap">{{ $matches }}/{{ $total }} match</span>
-                @endif
-            @endif
-        </div>
-        <div class="text-xs text-gray-400 truncate">{{ $app->user->email }}</div>
-        
-        @php
-        $allSkills = collect(explode(',', $app->skills))->filter();
-        $visibleSkills = $allSkills->take(2);
-        $hasMoreSkills = $allSkills->count() > 2;
-        @endphp
-        <div class="flex flex-wrap gap-1.5 mt-1">
-            @foreach($visibleSkills as $skill)
-                <span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs border border-blue-100">{{ trim($skill) }}</span>
-            @endforeach
-            @if($hasMoreSkills)
-                <span class="bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full text-xs border border-gray-200">...</span>
-            @endif
-        </div>
-        {{-- Status Badge --}}
-        @if($app->status)
-            <span class="inline-block text-xs mt-1 px-2 py-0.5 rounded 
-                {{ $app->status == 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500' }}">
-                {{ ucfirst($app->status) }}
-            </span>
-        @endif
-
-        {{-- Activity: show updated_at or last_active_at --}}
-        <span class="inline-block text-xs text-gray-400 mt-0.5">
-            Updated: {{ \Carbon\Carbon::parse($app->updated_at)->diffForHumans() }}
-        </span>
-    </div>
-</div>
-
-@endforeach
-        </div>
-        <button type="button" id="bulk-assign-btn"
-                class="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-            Add to "New"
-        </button>
-    </form>
-</div>
-
-<!-- Job Close Confirmation Modal -->
-<div id="closeJobModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 hidden">
-    <div class="bg-white rounded-xl shadow-lg px-8 py-6 max-w-sm w-full relative">
-        <h3 class="text-lg font-semibold mb-2 text-gray-800">Close This Job?</h3>
-        <div class="text-gray-500 mb-4">
-            Someone has been marked as "Hired" for this job.<br>
-            Do you want to close this job posting?
-        </div>
-        <div class="flex gap-2 justify-end">
-            <button onclick="closeCloseJobModal()" class="px-4 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm font-medium transition">Cancel</button>
-            <button id="confirmCloseJobBtn" class="px-4 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-medium transition">Close Job</button>
         </div>
     </div>
 </div>
 
 
-<!-- Minimalist Notification Modal -->
-<div id="notification-modal"
-     class="fixed inset-0 z-50 bg-black/20 flex items-center justify-center transition-opacity duration-200 invisible opacity-0">
-    <div class="bg-white rounded-xl shadow-lg px-8 py-6 max-w-xs w-full text-center scale-95 transition-transform duration-200">
-        <div id="notification-message" class="mb-2 text-gray-800 text-base"></div>
-        <button onclick="closeNotificationModal()"
-                class="mt-2 px-4 py-1 bg-gray-800 text-white rounded hover:bg-gray-700 text-sm">OK</button>
+        {{-- KANBAN BOARD --}}
+    <div class="overflow-x-auto">
+    <div class="flex gap-4 py-2" id="kanban-board">
+        @foreach($stages as $stage)
+            <div class="flex-1 min-w-[240px] bg-white/80 border border-gray-100 rounded-xl shadow-sm p-3 flex flex-col hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="font-semibold text-gray-800">{{ $stage }}</span>
+                    <span class="bg-gray-100 text-xs text-gray-600 px-2 py-0.5 rounded-full">
+                        {{ $jobApps->get($stage, collect())->count() }}
+                    </span>
+                </div>
+                <div class="flex-1 flex flex-col gap-2 stage-column" id="stage-{{ Str::slug($stage) }}" data-stage="{{ $stage }}">
+                    @foreach($jobApps->get($stage, collect()) as $app)
+                        @include('admin.jobs.partials.pipeline-card', ['app' => $app])
+                    @endforeach
+                </div>
+            </div>
+        @endforeach
     </div>
 </div>
 
-<!-- Application Details Modal -->
-<div id="appDetailsModal" class="fixed inset-0 z-50 bg-black/30 flex items-center justify-center transition-opacity duration-200 invisible opacity-0">
-    <div class="bg-white rounded-xl shadow-lg px-8 py-6 max-w-lg w-full relative scale-95 transition-transform duration-200">
-        <button onclick="closeAppDetailsModal()" class="absolute right-3 top-3 text-gray-400 hover:text-gray-800 text-xl">&times;</button>
-        <div id="appDetailsContent">
-            <!-- Dynamic Content Here -->
+
+        {{-- search sort filter --}}
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 my-3 ">
+    <!-- Search -->
+    <div class="relative flex-1 max-w-xs">
+        <input type="text" id="candidate-search"
+            placeholder="Search candidates…"
+            class="pl-9 pr-3 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-200 text-sm bg-white shadow-sm w-full transition placeholder:text-gray-400" />
+        <svg class="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2"
+            viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4-4"/></svg>
+    </div>
+    <!-- Sort -->
+    <div class="flex-none">
+        <select id="candidate-sort"
+            class="rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-200 transition font-medium text-gray-700 min-w-[180px] hover:border-blue-400">
+            <option value="recent">Sort by: Most Recent</option>
+            <option value="score-desc">Sort by: Highest Match</option>
+            <option value="score-asc">Sort by: Lowest Match</option>
+            <option value="name-az">Sort by: Name (A-Z)</option>
+            <option value="name-za">Sort by: Name (Z-A)</option>
+        </select>
+    </div>
+</div>
+
+
+        {{-- GENERAL POOL --}}
+       <div class="bg-white border rounded-xl shadow p-5 ">
+    <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2"
+             viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+        General Candidate Pool
+    </h2>
+    <div class="flex flex-wrap gap-3" id="general-pool" data-stage="pool">
+        @foreach($generalPool as $app)
+            @include('admin.jobs.partials.pipeline-card', ['app' => $app])
+        @endforeach
+    </div>
+</div>
+</div>
+
+<div>
+    {{-- modals --}}
+    @include('admin.jobs.partials.candidate-modal')
+
+    {{-- bulk action --}}
+    <div id="bulk-action-bar"
+    class="fixed bottom-4 left-1/2 -translate-x-1/2 bg-white shadow-lg rounded-xl px-6 py-3 flex items-center gap-4 z-50 border transition-all"
+    style="display: none;">
+    <span id="bulk-count" class="text-base font-semibold text-blue-700"></span>
+    <button onclick="bulkMoveStage('Screening')" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
+        Move to Screening
+    </button>
+    <button onclick="bulkMoveStage('Interview')" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
+        Move to Interview
+    </button>
+    <button onclick="bulkMoveStage('Assessment')" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
+        Move to Assessment
+    </button>
+    <button onclick="bulkMoveStage('pool')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded-full text-xs font-semibold">
+        Return to Pool
+    </button>
+    <button onclick="disableBulkMode()" class="ml-2 text-gray-400 hover:text-red-500 text-xs px-2">Cancel</button>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="flash-confirm-modal"
+     class="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+     style="display:none;">
+    <div class="bg-white rounded-2xl shadow-2xl px-6 py-7 w-full max-w-md mx-auto flex flex-col items-center gap-5 border border-gray-100">
+        <span id="flash-confirm-msg" class="text-base sm:text-lg font-semibold text-gray-800 text-center leading-relaxed"></span>
+        <div class="flex gap-3 mt-2 w-full justify-center">
+            <button id="flash-confirm-yes"
+                class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm shadow transition focus:ring-2 focus:ring-blue-200">
+                Confirm
+            </button>
+            <button id="flash-confirm-cancel"
+                class="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg font-semibold text-sm shadow transition focus:ring-2 focus:ring-gray-200">
+                Cancel
+            </button>
         </div>
     </div>
 </div>
 
-<!-- Minimalist Remove Modal -->
-<div id="remove-confirm-modal"
-     class="fixed inset-0 z-50 bg-black/20 flex items-center justify-center transition-opacity duration-200 invisible opacity-0">
-    <div class="bg-white rounded-xl shadow-lg px-6 py-6 max-w-xs w-full text-center scale-95 transition-transform duration-200">
-        <div class="mb-4 text-gray-800 text-base font-semibold">Remove applicant from this job?</div>
-        <div class="flex gap-2 justify-center">
-            <button id="confirm-remove-btn"
-                class="px-4 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-medium transition">Remove</button>
-            <button onclick="closeRemoveConfirmModal()"
-                class="px-4 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm font-medium transition">Cancel</button>
-        </div>
-    </div>
-</div>
 
-
-
-    {{-- SortableJS CDN --}}
+    {{-- SCRIPTS --}}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script>
-    document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('unassigned-pool').addEventListener('click', function(e) {
-    // Don't open modal if clicking on a checkbox!
-    if (e.target.matches('.bulk-checkbox')) return;
-    let card = e.target.closest('.candidate-card');
-    if (card && card.dataset.appId) {
-        showAppDetailsModal(card.dataset.appId);
-    }
-});
-
-document.querySelectorAll('.stage-column').forEach(column => {
+    document.addEventListener('DOMContentLoaded', function() {
+        // Kanban columns and pool
+    document.querySelectorAll('.stage-column, #general-pool').forEach(column => {
     new Sortable(column, {
-        group: 'shared',
-        animation: 150,
+        group: 'candidates',
+        animation: 180,
+        draggable: '.candidate-card',
         onAdd: function(evt) {
             const appId = evt.item.dataset.id;
-            const newStage = evt.to.dataset.stage;
+            const targetStage = evt.to.dataset.stage;
+            const fromColumn = evt.from;
+            const fromIndex = evt.oldIndex;
 
+            // Helper: Snap card back to its old column & position
+            function snapBack() {
+                if (fromColumn && evt.item) {
+                    fromColumn.insertBefore(evt.item, fromColumn.children[fromIndex]);
+                }
+            }
+
+            // Move to "Hired" needs confirmation
+            if (targetStage === 'Hired') {
+                const candidateName = evt.item.querySelector('.font-medium')?.textContent?.trim() || "this candidate";
+                flashConfirm(`Are you sure you want to <b>hire</b> <span class="text-blue-700 font-semibold">${candidateName}</span> and close the job listing?<br><span class="text-xs text-gray-500">This cannot be undone.</span>`)
+                    .then(ok => {
+                        if (!ok) {
+                            snapBack();
+                            return;
+                        }
+                        fetch(`/applications/${appId}/hire`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            }
+                        }).then(r => r.json()).then(() => location.reload());
+                    });
+                return; // Stop further processing until user confirms
+            }
+
+            // Move to Pool
+            if (targetStage === 'pool') {
+                fetch(`/applications/${appId}/stage`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ job_id: null, stage: null })
+                }).then(r => r.json()).then(() => location.reload());
+                return;
+            }
+
+            // Any other stage
             fetch(`/applications/${appId}/stage`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
-                body: JSON.stringify({
-                    stage: newStage,
-                    job_id: {{ $job->id }}
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Remove from pool if it exists there
-                const pool = document.getElementById('unassigned-pool');
-                if (pool && pool.contains(evt.item)) {
-                    evt.item.remove();
-                }
-                evt.item.classList.remove('candidate-card');
-                updateStageCounts();
-
-                // 🔴 Show the close job modal ONLY if dropped to Hired
-                if (newStage === 'Hired') {
-                    showCloseJobModal({{ $job->id }});
-                }
-            });
+                body: JSON.stringify({ job_id: {{ $job->id }}, stage: targetStage })
+            }).then(r => r.json()).then(() => location.reload());
         }
     });
 });
 
-//kanban live counting
-function updateStageCounts() {
-    document.querySelectorAll('.stage-column').forEach(column => {
-        const stage = column.dataset.stage;
-        const count = column.querySelectorAll('.draggable').length;
-        const badge = document.querySelector(`[data-stage-count="${stage.toLowerCase().replace(/\s+/g, '-')}"]`);
-        if (badge) badge.innerText = count;
+        // Candidate modal (universal handler)
+        document.addEventListener('click', function(e) {
+            let card = e.target.closest('.candidate-card');
+            if (card && card.dataset.appId) {
+                showAppDetailsModal(card.dataset.appId);
+            }
+        });
+    });
+    </script>
+    {{-- modal js --}}
+    <script>
+window.currentJobId = {{ $job->id }};
+</script>
+
+<script>
+function showAppDetailsModal(appId) {
+    let modal = document.getElementById('candidate-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    let jobId = window.currentJobId; // See note above
+
+    // Reset all fields
+    document.getElementById('candidate-avatar').innerHTML = '';
+    document.getElementById('candidate-resume-view').classList.add('hidden');
+    document.getElementById('candidate-resume-download').classList.add('hidden');
+    document.getElementById('candidate-no-resume').classList.add('hidden');
+    document.getElementById('best-match-badge').classList.add('hidden');
+
+    fetch(`/applications/${appId}/details?job_id=${jobId}`)
+        .then(r => r.json())
+        .then(data => {
+            // Match Score
+            let matchScore = (typeof data.match_score === 'undefined' ? 0 : data.match_score);
+            document.getElementById('candidate-match-score').textContent = `Match: ${matchScore}%`;
+            let progressBar = document.getElementById('candidate-match-progress');
+            if (progressBar) {
+                progressBar.style.width = `${matchScore}%`;
+                if (matchScore >= 70) progressBar.style.background = 'linear-gradient(90deg, #4ade80, #16a34a)';
+                else if (matchScore >= 40) progressBar.style.background = 'linear-gradient(90deg, #fbbf24, #f59e42)';
+                else progressBar.style.background = 'linear-gradient(90deg, #fca5a5, #f43f5e)';
+            }
+
+            // Profile photo or initials fallback
+            if (data.user_profile_photo) {
+                document.getElementById('candidate-avatar').innerHTML =
+                  `<img src="${data.user_profile_photo}" class="w-16 h-16 object-cover rounded-full border" alt="${data.user_name}">`;
+            } else {
+                document.getElementById('candidate-avatar').innerHTML =
+                  `<div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-200 to-blue-400 flex items-center justify-center font-bold text-2xl text-blue-700">${data.user_initials || '?'}</div>`;
+            }
+
+            document.getElementById('candidate-name').textContent = data.user_name || `${data.first_name} ${data.last_name}`;
+            document.getElementById('candidate-email').innerHTML = data.email ? `<a href="mailto:${data.email}" class="hover:underline">${data.email}</a>` : '';
+            document.getElementById('candidate-phone').innerHTML = data.phone_number ? `<a href="tel:${data.phone_number}" class="hover:underline">${data.phone_number}</a>` : '';
+            document.getElementById('candidate-age').textContent = data.age ? `Age: ${data.age}` : '';
+            document.getElementById('candidate-status').textContent = data.status || 'new';
+            document.getElementById('candidate-stage').textContent = data.stage || 'Pool';
+
+            // Skills
+            let skills = [];
+            if (Array.isArray(data.skills)) {
+                skills = data.skills;
+            } else if (typeof data.skills === 'string') {
+                skills = data.skills.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            }
+            const skillsContainer = document.getElementById('candidate-skills');
+            skillsContainer.innerHTML = '';
+            if (skills.length) {
+                skills.forEach(skill => {
+                    const chip = document.createElement('span');
+                    chip.className = "inline-block bg-blue-100 text-blue-700 px-3 py-0.5 rounded-full text-xs font-semibold";
+                    chip.textContent = skill;
+                    skillsContainer.appendChild(chip);
+                });
+            } else {
+                skillsContainer.innerHTML = '<span class="text-gray-400 text-xs">None listed</span>';
+            }
+
+            document.getElementById('candidate-education').textContent = (data.education_level || '') + (data.institution ? ' @ ' + data.institution : '');
+            document.getElementById('candidate-work').textContent = (data.company_name ? `${data.position} @ ${data.company_name}` : '');
+
+            // Resume view/download
+            if (data.resume) {
+                const resumeURL = `/storage/${data.resume}`;
+                document.getElementById('candidate-resume-view').href = resumeURL;
+                document.getElementById('candidate-resume-download').href = resumeURL;
+                document.getElementById('candidate-resume-view').classList.remove('hidden');
+                document.getElementById('candidate-resume-download').classList.remove('hidden');
+            } else {
+                document.getElementById('candidate-no-resume').classList.remove('hidden');
+            }
+
+            // Dates
+            if (data.created_at) {
+                let createdAt = moment(data.created_at).fromNow();
+                document.getElementById('candidate-created-at').textContent = createdAt;
+            }
+            if (data.updated_at) {
+                let updatedAt = moment(data.updated_at).fromNow();
+                document.getElementById('candidate-updated-at').textContent = updatedAt;
+            }
+
+            // Best Match
+            if (data.isBest) document.getElementById('best-match-badge').classList.remove('hidden');
+            else document.getElementById('best-match-badge').classList.add('hidden');
+        });
+
+    modal.onclick = function(e) {
+        if (e.target === modal) closeCandidateModal();
+    };
+    document.getElementById('close-candidate-modal').onclick = closeCandidateModal;
+}
+
+// Close modal handler
+function closeCandidateModal() {
+    let modal = document.getElementById('candidate-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+// Close modal on button click
+document.addEventListener('DOMContentLoaded', function() {
+    let btn = document.getElementById('close-candidate-modal');
+    if (btn) btn.onclick = closeCandidateModal;
+
+    // Also close on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeCandidateModal();
+    });
+});
+</script>
+
+
+{{-- bulk action js --}}
+<script>
+    let bulkMode = false;
+let selectedBulkIds = [];
+
+
+const toggleBtn = document.getElementById('toggle-bulk-mode');
+const bulkLabel = document.getElementById('bulk-label');
+const bulkIcon = document.getElementById('bulk-icon');
+const bulkBar = document.getElementById('bulk-action-bar');
+const countSpan = document.getElementById('bulk-count');
+
+toggleBtn.onclick = function () {
+    bulkMode = !bulkMode;
+    document.querySelectorAll('.bulk-checkbox').forEach(cb => {
+        cb.style.display = bulkMode ? '' : 'none';
+        if (!bulkMode) cb.checked = false;
+    });
+    document.querySelectorAll('.candidate-card').forEach(card => card.classList.remove('ring-2', 'ring-blue-400', 'bg-blue-50'));
+    selectedBulkIds = [];
+
+    // Toggle styles
+    toggleBtn.classList.toggle('bg-blue-600', bulkMode);
+    toggleBtn.classList.toggle('text-white', bulkMode);
+    toggleBtn.classList.toggle('border-blue-600', bulkMode);
+    toggleBtn.classList.toggle('bg-blue-50', !bulkMode);
+    toggleBtn.classList.toggle('text-blue-700', !bulkMode);
+    toggleBtn.classList.toggle('border-blue-100', !bulkMode);
+    bulkLabel.textContent = bulkMode ? "Bulk Mode ON" : "Bulk Select";
+    // Icon: filled when on, outline when off
+    bulkIcon.innerHTML = bulkMode
+        ? `<rect x="4" y="4" width="16" height="16" rx="2" fill="currentColor" class="text-blue-200"/><rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" fill="none"/>`
+        : `<rect x="4" y="4" width="16" height="16" rx="2" />`;
+
+    updateBulkBar();
+};
+
+// Checkbox select/deselect + card highlight
+document.addEventListener('change', function(e) {
+    if (!e.target.classList.contains('bulk-checkbox')) return;
+    const id = e.target.value;
+    const card = e.target.closest('.candidate-card');
+    if (e.target.checked) {
+        if (!selectedBulkIds.includes(id)) selectedBulkIds.push(id);
+        card.classList.add('ring-2', 'ring-blue-400', 'bg-blue-50');
+    } else {
+        selectedBulkIds = selectedBulkIds.filter(x => x !== id);
+        card.classList.remove('ring-2', 'ring-blue-400', 'bg-blue-50');
+    }
+    updateBulkBar();
+});
+
+// Prevent modal when bulk mode is on
+document.addEventListener('click', function(e) {
+    if (bulkMode && e.target.classList.contains('candidate-card')) return;
+    if (!bulkMode) {
+        let card = e.target.closest('.candidate-card');
+        if (card && card.dataset.appId) showAppDetailsModal(card.dataset.appId);
+    }
+});
+
+// Show/hide bulk action bar
+function updateBulkBar() {
+    if (bulkMode && selectedBulkIds.length > 0) {
+        bulkBar.style.display = '';
+        countSpan.textContent = `${selectedBulkIds.length} selected`;
+    } else {
+        bulkBar.style.display = 'none';
+    }
+}
+
+// Cancel button
+function disableBulkMode() {
+    bulkMode = false;
+    document.querySelectorAll('.bulk-checkbox').forEach(cb => {
+        cb.style.display = 'none';
+        cb.checked = false;
+    });
+    document.querySelectorAll('.candidate-card').forEach(card => card.classList.remove('ring-2', 'ring-blue-400', 'bg-blue-50'));
+    selectedBulkIds = [];
+    updateBulkBar();
+}
+
+// Flash confirmation (Promise-based)
+function flashConfirm(message) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('flash-confirm-modal');
+        const msg = document.getElementById('flash-confirm-msg');
+        msg.innerHTML = message;
+        modal.style.display = '';
+        document.body.style.overflow = 'hidden'; // Prevent background scroll
+
+        function cleanup(result) {
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+            yesBtn.removeEventListener('click', onYes);
+            cancelBtn.removeEventListener('click', onCancel);
+            resolve(result);
+        }
+
+        const yesBtn = document.getElementById('flash-confirm-yes');
+        const cancelBtn = document.getElementById('flash-confirm-cancel');
+
+        function onYes() { cleanup(true); }
+        function onCancel() { cleanup(false); }
+
+        yesBtn.addEventListener('click', onYes);
+        cancelBtn.addEventListener('click', onCancel);
     });
 }
 
 
-    // Candidate pool drag settings
-new Sortable(document.getElementById('unassigned-pool'), {
-    group: 'shared',
-    animation: 150,
-    onAdd: function(evt) {
-        const appId = evt.item.dataset.id;
-        // Candidate pool has no stage!
-        fetch(`/applications/${appId}/stage`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({
-                stage: null,
-                job_id: null
-            })
-        }).then(response => response.json())
-          .then(data => {
-              evt.item.classList.add('candidate-card');
-              updateStageCounts();
-          });
-    }
-});
+// Bulk move
+async function bulkMoveStage(stage) {
+    if (!selectedBulkIds.length) return;
+    const ok = await flashConfirm(`Move ${selectedBulkIds.length} candidate${selectedBulkIds.length > 1 ? 's' : ''} to "${stage}"?`);
+    if (!ok) return;
 
-
-});
-document.getElementById('bulk-assign-btn').addEventListener('click', function(e) {
-    e.preventDefault();
-
-    const selectedIds = Array.from(document.querySelectorAll('.bulk-checkbox:checked'))
-        .map(cb => cb.value);
-
-if (selectedIds.length === 0) {
-    showNotificationModal('Select at least one candidate!');
-    return;
-}
-
-
-    fetch('/applications/bulk-assign', {
+    fetch('/applications/bulk-update-stage', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': '{{ csrf_token() }}'
         },
         body: JSON.stringify({
-            ids: selectedIds,
-            job_id: {{ $job->id }},
-            stage: "New"
+            app_ids: selectedBulkIds,
+            stage: stage === 'pool' ? null : stage,
+            job_id: stage === 'pool' ? null : {{ $job->id }}
         })
-    }).then(r => r.json())
-      .then(data => {
-    if (data.success) {
-        showNotificationModal('Assigned!');
-        setTimeout(() => location.reload(), 1200); // optional: reload after a second
-    }
-});
-
-});
-
-//modal assign bulk
-function showNotificationModal(message) {
-    document.getElementById('notification-message').innerText = message;
-    const modal = document.getElementById('notification-modal');
-    modal.classList.remove('invisible', 'opacity-0');
-    modal.classList.add('opacity-100');
-    modal.querySelector('button').focus();
-}
-function closeNotificationModal() {
-    const modal = document.getElementById('notification-modal');
-    modal.classList.remove('opacity-100');
-    modal.classList.add('opacity-0');
-    setTimeout(() => {
-        modal.classList.add('invisible');
-    }, 200);
-}
-
-function showAppDetailsModal(appId) {
-     // Show loading spinner
-    document.getElementById('appDetailsContent').innerHTML = `
-        <div class="flex justify-center items-center h-24">
-            <svg class="animate-spin h-7 w-7 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-            </svg>
-        </div>
-    `;
-    // Fetch details with AJAX (expects a route returning JSON)
-    fetch(`/applications/${appId}/details`)
-        .then(r => r.json())
-        .then(data => {
-           let content = `
-            <div class="space-y-2">
-                <div class="flex flex-col items-center mb-3">
-                    <div class="text-lg font-bold text-gray-800">${data.user.name}</div>
-                    <div class="text-sm text-gray-400">${data.user.email}</div>
-                </div>
-                <div class="grid grid-cols-1 gap-y-2 text-[15px] text-gray-700">
-                    <div>
-                        <span class="font-medium">Stage:</span>
-                        <span class="text-gray-500 ml-1">${data.stage || '—'}</span>
-                    </div>
-                    <div>
-                        <span class="font-medium">Status:</span>
-                        <span class="ml-1 inline-block px-2 py-0.5 rounded-full bg-gray-100 text-xs text-gray-700">${data.status ? data.status : '—'}</span>
-                    </div>
-                    <div>
-                        <span class="font-medium">Phone:</span>
-                        <span class="text-gray-500 ml-1">${data.phone_number || '—'}</span>
-                    </div>
-                    <div>
-                        <span class="font-medium">Last Updated:</span>
-                        <span class="text-gray-500 ml-1">${data.updated_at ? new Date(data.updated_at).toLocaleString() : '—'}</span>
-                    </div>
-                    <div>
-                        <span class="font-medium">Education:</span>
-                        <span class="ml-1">${data.institution || '—'}</span>
-                        <span class="ml-1 text-gray-400">${data.graduation_year ? `(${data.graduation_year})` : ''}</span>
-                    </div>
-                    <div>
-                        <span class="font-medium">Work Experience:</span>
-                        <div class="ml-2">
-                            <span>${data.position || '—'} <span class="text-gray-400">at</span> ${data.company_name || '—'}</span>
-                            ${(data.start_date || data.end_date)
-                                ? `<span class="ml-1 text-xs text-gray-400">(${data.start_date || '?'} — ${data.end_date || 'Present'})</span>`
-                                : ''
-                            }
-                        </div>
-                    </div>
-                    <div>
-                        <span class="font-medium">Skills:</span>
-                        <div class="flex flex-wrap gap-1 mt-1">
-                            ${
-                                data.skills && data.skills.length
-                                    ? data.skills.map(s =>
-                                        `<span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs border border-blue-100">${s.trim()}</span>`
-                                      ).join('')
-                                    : '<span class="text-gray-400 ml-1">—</span>'
-                            }
-                        </div>
-                    </div>
-                    <div>
-                        <span class="font-medium">Resume:</span>
-                        ${data.resume
-                            ? `<a class="text-blue-600 underline ml-1" href="/storage/${data.resume}" target="_blank" download>Download</a>`
-                            : '<span class="text-gray-400 ml-1">—</span>'
-                        }
-                    </div>
-                </div>
-                <div class="text-xs text-gray-400 mt-4 text-right">Submitted: ${data.created_at ? new Date(data.created_at).toLocaleString() : '—'}</div>
-
-                <div class="flex justify-end gap-2 mt-6 border-t pt-4">
-     <a href="/admin/applicants/${data.id}/edit"
-        class="px-3 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-semibold hover:bg-blue-100 transition">
-        Edit
-     </a>
-     <button onclick="removeFromPipeline(${data.id})"
-        class="px-3 py-1 bg-gray-50 text-gray-600 rounded-md text-xs font-semibold hover:bg-gray-100 transition">
-        Remove from Job
-     </button>
-            </div>
-        `;
-
-            document.getElementById('appDetailsContent').innerHTML = content;
-            const modal = document.getElementById('appDetailsModal');
-            modal.classList.remove('invisible', 'opacity-0');
-            modal.classList.add('opacity-100');
-        });
-}
-
-let pendingRemoveAppId = null;
-
-// Open confirm modal for this application
-function removeFromPipeline(appId) {
-    pendingRemoveAppId = appId;
-    showRemoveConfirmModal();
-}
-
-// Show the modal
-function showRemoveConfirmModal() {
-    const modal = document.getElementById('remove-confirm-modal');
-    modal.classList.remove('invisible', 'opacity-0');
-    modal.classList.add('opacity-100');
-    // Focus confirm button for accessibility
-    setTimeout(() => document.getElementById('confirm-remove-btn').focus(), 100);
-}
-
-// Hide the modal
-function closeRemoveConfirmModal() {
-    const modal = document.getElementById('remove-confirm-modal');
-    modal.classList.remove('opacity-100');
-    modal.classList.add('opacity-0');
-    setTimeout(() => modal.classList.add('invisible'), 200);
-    pendingRemoveAppId = null;
-}
-
-// Confirm removal handler (reloads page after)
-document.getElementById('confirm-remove-btn').onclick = function () {
-    if (!pendingRemoveAppId) return;
-    fetch(`/applications/${pendingRemoveAppId}/stage`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        },
-        body: JSON.stringify({ stage: null, job_id: null })
     })
     .then(r => r.json())
-    .then(() => {
-        closeRemoveConfirmModal();
-        closeAppDetailsModal && closeAppDetailsModal();
-        // Reload after a short delay for UX smoothness
-        setTimeout(() => location.reload(), 400);
-    });
-};
-
-
-document.getElementById('appDetailsModal').addEventListener('click', function(e) {
-    if (e.target === this) closeAppDetailsModal();
-});
-
-function closeAppDetailsModal() {
-    const modal = document.getElementById('appDetailsModal');
-    modal.classList.remove('invisible', 'opacity-0');
-modal.classList.add('opacity-100');
-    setTimeout(() => {
-        modal.classList.add('invisible');
-    }, 200);
+    .then(() => location.reload());
 }
-
 </script>
 
-{{-- // search filter --}}
-    <script>
-document.getElementById('filter-sort-pool').addEventListener('change', function() {
-    const value = this.value;
-    const cards = Array.from(document.querySelectorAll('.candidate-card'));
-    if (value === 'all') {
-        cards.forEach(card => card.classList.remove('hidden'));
-    } else if (value === 'best') {
-        cards.forEach(card => {
-            card.classList.toggle('hidden', card.dataset.best !== '1');
-        });
-    } else if (value === 'matched') {
-        cards.forEach(card => {
-            card.classList.toggle('hidden', parseInt(card.dataset.matches) < 1);
-        });
-    } else if (value === 'sort') {
-        // Sort by matches descending
-        const pool = document.getElementById('unassigned-pool');
-        cards.sort((a, b) => parseInt(b.dataset.matches) - parseInt(a.dataset.matches));
-        cards.forEach(card => pool.appendChild(card));
+{{-- search sort filter  --}}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const pool = document.getElementById('general-pool');
+    if (!pool) return;
+
+    const searchInput = document.getElementById('candidate-search');
+    const sortSelect = document.getElementById('candidate-sort');
+
+    // Capture the original order and data of all cards
+    let allCards = Array.from(pool.querySelectorAll('.candidate-card')).map(card => ({
+        node: card,
+        name: card.querySelector('.font-medium')?.textContent.trim().toLowerCase() || '',
+        email: card.querySelector('.text-xs.text-gray-400')?.textContent.trim().toLowerCase() || '',
+        skills: Array.from(card.querySelectorAll('.skill-chip')).map(el => el.textContent.trim().toLowerCase()).join(' '),
+        score: (() => {
+            let scoreText = card.querySelector('.match-score')?.textContent || '';
+            let m = scoreText.match(/(\d+)%/);
+            return m ? parseInt(m[1]) : 0;
+        })(),
+        id: card.dataset.appId || ''
+    }));
+
+    function render(cards) {
+        pool.innerHTML = '';
+        cards.forEach(c => pool.appendChild(c.node));
     }
-});
 
-document.getElementById('search-candidate-pool').addEventListener('input', function() {
-    const search = this.value.trim().toLowerCase();
-    const cards = document.querySelectorAll('.candidate-card');
-    cards.forEach(card => {
-        const name = card.querySelector('.font-semibold')?.innerText.toLowerCase() || '';
-        const email = card.querySelector('.text-xs.text-gray-400')?.innerText.toLowerCase() || '';
-        // Gather skills text from chip badges (optional, make sure your chips have the right selector)
-        const skills = Array.from(card.querySelectorAll('.bg-blue-50')).map(el => el.innerText.toLowerCase()).join(' ');
-        card.classList.toggle('hidden',
-            !(
-                name.includes(search) ||
-                email.includes(search) ||
-                skills.includes(search)
-            )
+    function filterAndSort() {
+        let term = (searchInput.value || '').toLowerCase().trim();
+        let filtered = allCards.filter(c =>
+            c.name.includes(term) ||
+            c.email.includes(term) ||
+            c.skills.includes(term)
         );
-    });
-});
-
-//job status confirmation modal
-function showCloseJobModal(jobId) {
-    window.closingJobId = jobId; // Save for later use
-    document.getElementById('closeJobModal').classList.remove('hidden');
-}
-function closeCloseJobModal() {
-    document.getElementById('closeJobModal').classList.add('hidden');
-}
-
-document.getElementById('confirmCloseJobBtn').onclick = function() {
-    const jobId = window.closingJobId;
-    fetch(`/admin/jobs/${jobId}/close`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'Accept': 'application/json'
-        },
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            // Update UI: badge, modal, maybe disable further movement
-            document.querySelectorAll('.job-status-badge').forEach(badge => {
-                badge.innerHTML = 'Closed';
-                badge.className = 'job-status-badge px-3 py-1 bg-gray-200 text-gray-700 rounded-full font-semibold text-base'; // adjust classes as needed
-            });
-            closeCloseJobModal();
-            // Optional: toast notification
-            alert('Job is now closed!');
+        // Sort
+        let sort = sortSelect.value;
+        if (sort === 'score-desc') {
+            filtered.sort((a, b) => b.score - a.score);
+        } else if (sort === 'score-asc') {
+            filtered.sort((a, b) => a.score - b.score);
+        } else if (sort === 'name-az') {
+            filtered.sort((a, b) => a.name.localeCompare(b.name));
+        } else if (sort === 'name-za') {
+            filtered.sort((a, b) => b.name.localeCompare(a.name));
         }
+        render(filtered);
+    }
+
+    searchInput.addEventListener('input', filterAndSort);
+    sortSelect.addEventListener('change', filterAndSort);
+
+    filterAndSort();
+});
+</script>
+
+<script>
+    @if($job->status === 'closed')
+    // Disable drag-drop and bulk mode
+    document.querySelectorAll('.stage-column, #general-pool').forEach(col => {
+        col.style.pointerEvents = 'none';
+        col.style.opacity = 0.6;
     });
-};
+    document.getElementById('toggle-bulk-mode').disabled = true;
+@endif
 
 </script>
 

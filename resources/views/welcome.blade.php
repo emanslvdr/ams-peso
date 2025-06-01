@@ -63,7 +63,7 @@
                             employers through
                             intelligent, AI-powered
                             recruitment solutions — making hiring faster, smarter, and more efficient than ever before.</p>
-                        <a href="#" class="button">Submit application</a>
+                        <a href="{{ route('login') }}" class="button">Submit application</a>
                     </div>
                     <div class="hero-image-wrapper">
                         <img src="{{ asset('home/images/front2.png') }}" alt="Hero" class="hero-image">
@@ -93,7 +93,7 @@
                 </div>
             </section>
     
-            <section class="contact-section gradient-background" id="contact">
+            {{-- <section class="contact-section gradient-background" id="contact">
                 <h2 class="section-title">Contact Us</h2>
                 <div class="section-content">
                     <ul class="contact-info-list">
@@ -134,7 +134,7 @@
                         <button class="submit-button">Submit</button>
                     </form>
                 </div>
-            </section>
+            </section> --}}
     
             <footer class="footer-section">
                 <div class="section-content">

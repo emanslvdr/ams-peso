@@ -27,13 +27,33 @@ class ProfileAdmin extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $user = $request->user();
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        $user->fill($request->validated());
+
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
         }
 
-        $request->user()->save();
+        // UPLOAD logic (mirrors org/client logo upload)
+        if ($request->hasFile('profile_photo')) {
+            // Delete old photo
+            if ($user->profile_photo && \Storage::disk('public')->exists($user->profile_photo)) {
+                \Storage::disk('public')->delete($user->profile_photo);
+            }
+            $filename = $request->file('profile_photo')->store('profile-photos', 'public');
+            $user->profile_photo = $filename;
+        }
+
+        // DELETE logic (if requested)
+        if ($request->filled('remove_profile_photo') && $request->input('remove_profile_photo') == '1') {
+            if ($user->profile_photo && \Storage::disk('public')->exists($user->profile_photo)) {
+                \Storage::disk('public')->delete($user->profile_photo);
+            }
+            $user->profile_photo = null;
+        }
+
+        $user->save();
 
         return Redirect::route('admin.profile.edit')->with('status', 'profile-updated');
     }

@@ -1,4 +1,3 @@
-{{-- admin/jobs/partials/job-status-badge.blade.php --}}
 @php
     $color = match(strtolower($status ?? '')) {
         'open' => 'bg-green-200 text-green-800',
