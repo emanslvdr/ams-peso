@@ -29,6 +29,8 @@ class UserApplication extends Model
         'skills',
         'resume',
         'stage',
+        'job_id',
+        'status',
     ];
 
     public function user()

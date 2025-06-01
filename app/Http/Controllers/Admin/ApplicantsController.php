@@ -11,16 +11,6 @@ use Illuminate\Validation\Rule;
 
 class ApplicantsController extends Controller
 {
-    // public function index()
-    // {
-    //     $users = User::where('role', 'user')->with('applications')->get(); // Eager load applications
-    //     return view('admin.applicants.index', compact('users'));
-    // }
-    // public function index()
-    // {
-    //     $applications = UserApplication::with('user')->get(); // Fetch all applications with user data
-    //     return view('admin.applicants.index', compact('applications'));
-    // }
     public function index()
     {
         // Get users who have submitted applications

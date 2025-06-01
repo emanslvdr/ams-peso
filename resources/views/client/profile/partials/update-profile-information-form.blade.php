@@ -13,9 +13,33 @@
         @csrf
     </form>
 
-    <form method="post" action="{{ route('client.profile.update') }}" class="mt-6 space-y-6">
+    <form method="post" action="{{ route('client.profile.update') }}" class="mt-6 space-y-6" enctype="multipart/form-data">
+
         @csrf
         @method('patch')
+
+        <div class="flex items-center gap-4 mb-4">
+    @if($user->profile_photo)
+        <img src="{{ Storage::url($user->profile_photo) }}" alt="Profile photo" class="w-20 h-20 rounded-full object-cover border shadow" id="photoPreview">
+    @else
+        <span class="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-2xl text-blue-600 font-bold" id="photoPreview">
+            {{ strtoupper(substr($user->name, 0, 1)) }}
+        </span>
+    @endif
+    <div>
+        <label class="block">
+            <span class="text-sm text-gray-600">Change Photo</span>
+            <input type="file" name="profile_photo" accept="image/*" class="block w-full text-sm mt-1" />
+        </label>
+        @if($user->profile_photo)
+            <label class="flex items-center mt-2 gap-2 text-red-500 cursor-pointer">
+                <input type="checkbox" name="remove_profile_photo" value="1" class="accent-red-500">
+                Remove Photo
+            </label>
+        @endif
+        @error('profile_photo') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+    </div>
+</div>
 
         <div>
             <x-input-label for="name" :value="__('Name')" />
@@ -59,4 +83,14 @@
             @endif
         </div>
     </form>
+    <script>
+    document.querySelector('input[name="profile_photo"]').addEventListener('change', function(e) {
+        if (e.target.files && e.target.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (e) => document.getElementById('photoPreview').src = e.target.result;
+            reader.readAsDataURL(e.target.files[0]);
+        }
+    });
+</script>
+
 </section>

@@ -30,18 +30,27 @@ class ClientController extends Controller
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:6|confirmed',
             'organization_id' => 'required|exists:organizations,id',
+            'profile_photo' => 'nullable|image|max:2048',
         ]);
+
+        $filename = null;
+        if ($request->hasFile('profile_photo')) {
+            $filename = $request->file('profile_photo')->store('profile-photos', 'public');
+        }
+
 
         User::create([
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
-            'password' => Hash::make($validatedData['password']),
-            'role' => 'client', // Always set to 'client'
+            'password' => \Hash::make($validatedData['password']),
+            'role' => 'client',
             'organization_id' => $validatedData['organization_id'],
+            'profile_photo' => $filename,
         ]);
 
         return redirect()->route('clients.index')->with('success', 'Client created successfully.');
     }
+
 
     public function edit(User $client)
     {
@@ -59,16 +68,27 @@ class ClientController extends Controller
                 Rule::unique('users', 'email')->ignore($client->id),
             ],
             'organization_id' => 'required|exists:organizations,id',
+            'profile_photo' => 'nullable|image|max:2048',
         ]);
 
-        $client->update([
-            'name' => $validatedData['name'],
-            'email' => $validatedData['email'],
-            'organization_id' => $validatedData['organization_id'],
-        ]);
+        if ($request->hasFile('profile_photo')) {
+            // Optionally: Delete old photo
+            if ($client->profile_photo && \Storage::disk('public')->exists($client->profile_photo)) {
+                \Storage::disk('public')->delete($client->profile_photo);
+            }
+            $filename = $request->file('profile_photo')->store('profile-photos', 'public');
+            $client->profile_photo = $filename;
+        }
+
+
+        $client->name = $validatedData['name'];
+        $client->email = $validatedData['email'];
+        $client->organization_id = $validatedData['organization_id'];
+        $client->save();
 
         return redirect()->route('clients.index')->with('success', 'Client updated successfully.');
     }
+
 
     public function destroy(User $client)
     {

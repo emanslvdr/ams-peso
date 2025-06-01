@@ -13,7 +13,7 @@ class OrganizationController extends Controller
     {
         // $organizations = Organization::all();
         // return view('admin.organizations.index', compact('organizations'));
-        $organizations = Organization::withCount('jobs')->get();
+        $organizations = Organization::withCount('jobs')->paginate(99); // 10 per page (adjust as needed)
         return view('admin.organizations.index', compact('organizations'));
     }
 
@@ -21,17 +21,27 @@ class OrganizationController extends Controller
     {
         return view('admin.organizations.create');
     }
-
     public function store(Request $request)
     {
         $request->validate([
             'name' => 'required|unique:organizations,name',
+            'address' => 'nullable|string',
+            'phone' => 'nullable|string',
+            'email' => 'nullable|email',
+            'website' => 'nullable|url',
+            'description' => 'nullable|string',
+            'logo' => 'nullable|image|max:2048', // for upload
         ]);
 
-        Organization::create(['name' => $request->name]);
+        $data = $request->only(['name', 'address', 'phone', 'email', 'website', 'description']);
+        if ($request->hasFile('logo')) {
+            $data['logo'] = $request->file('logo')->store('organization_logos', 'public');
+        }
+        Organization::create($data);
 
         return redirect()->route('organizations.index')->with('success', 'Organization created.');
     }
+
 
     public function edit(Organization $organization)
     {
@@ -42,9 +52,18 @@ class OrganizationController extends Controller
     {
         $request->validate([
             'name' => 'required|unique:organizations,name,' . $organization->id,
+            'address' => 'nullable|string',
+            'phone' => 'nullable|string',
+            'email' => 'nullable|email',
+            'website' => 'nullable|url',
+            'description' => 'nullable|string',
+            'logo' => 'nullable|image|max:2048',
         ]);
-
-        $organization->update(['name' => $request->name]);
+        $data = $request->only(['name', 'address', 'phone', 'email', 'website', 'description']);
+        if ($request->hasFile('logo')) {
+            $data['logo'] = $request->file('logo')->store('organization_logos', 'public');
+        }
+        $organization->update($data);
 
         return redirect()->route('organizations.index')->with('success', 'Organization updated.');
     }

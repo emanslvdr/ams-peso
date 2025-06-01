@@ -11,6 +11,10 @@ use App\Http\Controllers\Admin\JobController;
 use App\Http\Controllers\Client\ClientJobController;
 use App\Http\Controllers\User\UserApplicationController;
 use App\Http\Controllers\Admin\ApplicantsController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Client\ClientApplicantsController;
+use App\Http\Controllers\Client\ClientDashboardController;
+use App\Http\Controllers\User\UserDashboardController;
 
 
 Route::get('/', function () {
@@ -21,12 +25,7 @@ Route::get('/', function () {
 Route::middleware(['auth', 'role:admin'])->group(function () {
 
     //admin navigation
-    Route::get('/admin/home', function () {
-        return view('admin.home');
-    })->name('admin.home');
-    Route::get('/admin/dashboard', function () {
-        return view('admin.dashboard');
-    })->name('admin.dashboard');
+    Route::get('/admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard.index');
 
     Route::get('/admin/create/user', function () {
         return view('admin.create.user');
@@ -71,14 +70,78 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::delete('/admin/jobs/{job}', [JobController::class, 'destroy'])->name('jobs.destroy');
 
     Route::get('/jobs/{job}/pipeline', [JobController::class, 'pipeline'])->name('jobs.pipeline');
+
+    Route::post('/admin/jobs/{job}/close', [App\Http\Controllers\Admin\JobController::class, 'close'])->name('admin.jobs.close');
+
+    Route::post('/admin/jobs/{job}/status', [App\Http\Controllers\Admin\JobController::class, 'updateStatus']);
+
+
     Route::post('/applications/{application}/stage', function (\App\Models\UserApplication $application, \Illuminate\Http\Request $request) {
-        $application->update([
-            'stage' => $request->input('stage'),
+        $data = [];
+        // Accept explicit nulls from JSON for job_id and stage
+        if ($request->has('job_id')) {
+            $data['job_id'] = $request->input('job_id');
+        }
+        if ($request->has('stage')) {
+            $data['stage'] = $request->input('stage');
+        }
+        $application->update($data);
+        return response()->json(['success' => true]);
+    });
+
+    Route::post('/applications/bulk-assign', function (\Illuminate\Http\Request $request) {
+        \App\Models\UserApplication::whereIn('id', $request->input('ids'))
+            ->update([
+                'job_id' => $request->input('job_id'),
+                'stage' => $request->input('stage'),
+            ]);
+        return response()->json(['success' => true]);
+    });
+
+    Route::get('/applications/{application}/details', function (\App\Models\UserApplication $application, \Illuminate\Http\Request $request) {
+        $application->load('user');
+        $jobId = $request->get('job_id');
+        $jobSkills = [];
+        $jobTitle = '';
+        if ($jobId) {
+            $job = \App\Models\Job::find($jobId);
+            $jobTitle = $job?->title ?? '';
+            $jobSkills = collect(explode(',', strtolower($job?->skills ?? '')))
+                ->map(fn($s) => trim($s))->filter()->unique();
+        }
+        $appSkills = collect(explode(',', strtolower($application->skills ?? '')))
+            ->map(fn($s) => trim($s))->filter()->unique();
+
+        $matchedSkills = $jobSkills ? $jobSkills->intersect($appSkills)->count() : 0;
+        $requiredSkills = max($jobSkills->count(), 1);
+        $matchScore = $jobSkills->count() ? round(($matchedSkills / $requiredSkills) * 100) : 0;
+        $isBest = $matchScore >= 70;
+
+        $data = $application->toArray();
+        $data['user_profile_photo'] = $application->user?->profile_photo ? asset('storage/' . $application->user->profile_photo) : null;
+        $data['user_name'] = $application->user?->name ?? trim(($application->first_name ?? '') . ' ' . ($application->last_name ?? ''));
+        $data['user_initials'] = collect(explode(' ', $data['user_name']))->map(fn($part) => strtoupper(substr($part, 0, 1)))->join('');
+        $data['match_score'] = $matchScore;
+        $data['isBest'] = $isBest;
+        $data['job_title'] = $jobTitle;
+
+        return response()->json($data);
+    });
+
+
+    Route::post('/applications/bulk-update-stage', function (\Illuminate\Http\Request $request) {
+        $appIds = $request->app_ids;
+        $stage = $request->stage;
+        $jobId = $request->job_id;
+
+        \App\Models\UserApplication::whereIn('id', $appIds)->update([
+            'stage' => $stage,
+            'job_id' => $jobId
         ]);
         return response()->json(['success' => true]);
     });
 
-
+    Route::post('/applications/{application}/hire', [JobController::class, 'markAsHired']);
 
     // applicants CRUD
     Route::get('/admin/applicants', [ApplicantsController::class, 'index'])->name('applicants.index');
@@ -91,16 +154,10 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 Route::middleware(['auth', 'role:client'])->group(function () {
 
     //client navigation
-    Route::get('/client/home', function () {
-        return view('client.home');
-    })->name('client.home');
-    Route::get('/client/dashboard', function () {
-        return view('client.dashboard');
-    })->name('client.dashboard');
-    Route::get('/client/applicants', function () {
-        return view('client.applicants');
-    })->name('client.applicants');
-
+    Route::get('/client/dashboard', [ClientDashboardController::class, 'index'])
+        ->name('client.dashboard');
+    Route::get('/client/applicants', [ClientApplicantsController::class, 'index'])
+        ->name('client.applicants.index');
     //client profile edit
     Route::get('/profile/client', [ProfileClient::class, 'edit'])->name('client.profile.edit');
     Route::patch('/profile/client/update', [ProfileClient::class, 'update'])->name('client.profile.update');
@@ -114,6 +171,50 @@ Route::middleware(['auth', 'role:client'])->group(function () {
     Route::put('/client/jobs/{job}', [ClientJobController::class, 'update'])->name('client.jobs.update');
     Route::delete('/client/jobs/{job}', [ClientJobController::class, 'destroy'])->name('client.jobs.destroy');
 
+    // Pipeline view for a job (client side)
+    Route::get('/client/jobs/{job}/pipeline', [ClientJobController::class, 'pipeline'])->name('client.jobs.pipeline');
+
+    // Move a candidate between stages
+    Route::post('/client/applications/{application}/stage', function (\App\Models\UserApplication $application, \Illuminate\Http\Request $request) {
+        $data = ['stage' => $request->input('stage')];
+        if ($request->has('job_id')) {
+            $data['job_id'] = $request->input('job_id');
+        }
+        $application->update($data);
+        return response()->json(['success' => true]);
+    });
+
+    // Bulk update stages
+    Route::post('/client/applications/bulk-update-stage', function (\Illuminate\Http\Request $request) {
+        $appIds = $request->input('app_ids');
+        $stage = $request->input('stage');
+        $jobId = $request->input('job_id');
+        \App\Models\UserApplication::whereIn('id', $appIds)->update([
+            'stage' => $stage,
+            'job_id' => $jobId
+        ]);
+        return response()->json(['success' => true]);
+    });
+
+    // Application details for modal
+    Route::get('/client/applications/{application}/details', function (\App\Models\UserApplication $application, \Illuminate\Http\Request $request) {
+        $application->load('user');
+        // ... your details logic here, copy/adapt from admin ...
+        $data = $application->toArray();
+        // ... etc
+        return response()->json($data);
+    });
+
+    // Mark as Hired and close job, if needed
+    Route::post('/client/applications/{application}/hire', [ClientJobController::class, 'markAsHired']);
+
+
+    Route::post('/client/jobs/{job}/status', [ClientJobController::class, 'updateStatus']);
+
+    Route::post('/client/jobs/{job}/close', [ClientJobController::class, 'close'])->name('client.jobs.close');
+
+
+
 });
 
 
@@ -121,12 +222,10 @@ Route::middleware(['auth', 'role:client'])->group(function () {
 Route::middleware(['auth', 'role:user'])->group(function () {
 
     // user navigation
-    Route::get('dashboard', function () {
-        return view('user.dashboard');
-    })->name('dashboard');
-    // Route::get('application', function () {
-    //     return view('user.application');
-    // })->name('application');
+    Route::get('/dashboard', [UserDashboardController::class, 'index'])
+        ->middleware(['auth', 'role:user', 'verified'])
+        ->name('dashboard');
+
 
     // user profile edit
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -142,6 +241,16 @@ Route::middleware(['auth', 'role:user'])->group(function () {
     Route::delete('/user/application/{userApplication}', [UserApplicationController::class, 'destroy'])->name('user.application.destroy');
 
 
+    Route::get('/user/application/job/{job}', [UserApplicationController::class, 'createForJob'])
+        ->name('user.application.create_for_job');
+
+
+
+});
+
+Route::get('/force-logout', function () {
+    Auth::logout();
+    return redirect('/login');
 });
 
 require __DIR__ . '/auth.php';

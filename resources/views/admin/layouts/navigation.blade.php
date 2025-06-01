@@ -20,8 +20,8 @@
                 <span>Home</span>
             </a>
         </li> --}}
-        <li class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
-            <a href="{{ route('admin.dashboard') }}">
+        <li class="{{ request()->routeIs('admin.dashboard.index') ? 'active' : '' }}">
+            <a href="{{ route('admin.dashboard.index') }}">
                 <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
                     fill="#e3e3e3">
                     <path

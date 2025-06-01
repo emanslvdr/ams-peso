@@ -20,6 +20,8 @@ class Job extends Model
         'title',
         'description',
         'organization_id',
+        'skills',
+        'status',
     ];
 
     public function organization()
